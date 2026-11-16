@@ -1,0 +1,192 @@
+<!-- Generated from CLAUDE.md by build-opencode.js -->
+<!-- opencode.ai compatible version of Claude Code Harness -->
+
+# AGENTS.md - Claude Harness Development Guide
+
+This file provides guidance for Claude Code when working in this repository.
+
+## Project Overview
+
+**Claude harness** is a plugin for autonomous operation of Claude Code in a "Plan → Work → Review" workflow.
+
+**Special note**: This project is self-referential — it uses the harness itself to improve the harness.
+
+## Claude Code Feature Utilization
+
+<!-- Feature Table は docs/CLAUDE-feature-table.md に集約。ここに行を追加しない -->
+CC v2.1.111+ の統合機能を活用。詳細: [docs/CLAUDE-feature-table.md](docs/CLAUDE-feature-table.md)
+Fable 5.1 / astra の担当別モデルと明示指定: [docs/model-routing-policy.md](docs/model-routing-policy.md)
+担当への目的、完成条件、証拠の受渡し: [docs/prompt-calibration.md](docs/prompt-calibration.md)
+長時間タスクの手順: [docs/long-running-harness.md](docs/long-running-harness.md)
+
+主要活用機能: Agent Memory, Worktree isolation, Agent hooks, PreCompact/PostCompact, PermissionDenied tracking, 1M Context Window
+
+## Development Rules
+
+### Commit Messages
+
+Follow [Conventional Commits](https://www.conventionalcommits.org/): `feat:` / `fix:` / `docs:` / `refactor:` / `test:` / `chore:`
+
+### Version Management
+
+Keep all version surfaces in sync via `./scripts/sync-version.sh` (the script is the SSOT for the target list — currently 7 strings across 6 files including `.grok-plugin/plugin.json`).
+Normal feature/docs PRs must leave both files unchanged and record changes under `CHANGELOG.md`'s `[Unreleased]` section.
+Use `./scripts/sync-version.sh bump` only when cutting a release.
+
+### CHANGELOG
+
+Details: [skills/harness-release/references/github-release.md](skills/harness-release/references/github-release.md) (Keep a Changelog format; include Before/After tables for major changes)
+
+### Language
+
+User-facing responses follow the explicit session or project language. If no
+language is configured, use English. Use Japanese only when `i18n.language: ja`,
+`CLAUDE_CODE_HARNESS_LANG=ja`, or an explicit session instruction requests
+Japanese output.
+
+Full details (how to switch, precedence, what does not change): [docs/i18n.md](docs/i18n.md).
+
+### Code Style
+
+- Use clear and descriptive names
+- Add comments for complex logic
+- Keep agents/skills single-responsibility
+
+## Repository Structure
+
+`.claude-plugin/` Plugin manifest / `.claude/` Claude runtime state, memory, rules, hooks / `.cursor/` Cursor commands, rules, plans, skills / `agents/` Sub-agents / `skills/` Primary skills / `skills-codex/` Codex-specific skill variants / `hooks/` Hooks / `scripts/` Shell scripts / `src/` TypeScript implementation / `app/` App layer / `frontend/` Frontend implementation / `docs/` Documentation / `templates/` Templates / `tests/` Validation / `go/` Harness v4 Go native engine ([SPEC.md](go/SPEC.md), [DESIGN.md](go/DESIGN.md)) / `mcp-server/` MCP server implementation / `harness-ui/` UI subproject / `opencode/` OpenCode-compatible output
+
+## Using Skills (Important)
+
+**Before starting work:** If a relevant skill exists, launch it with the Skill tool first.
+
+> For heavy tasks, skills spawn sub-agents from `agents/` in parallel via the Task tool.
+
+### Top Skill Areas
+
+| Category | Purpose | Trigger Examples |
+|---------|---------|-----------------|
+| harness-work | Task implementation from Plans.md | "implement", "do it all", "/work" |
+| breezing | Full parallel run with Agent Teams | "run with team", "breezing" |
+| harness-review | Code review, quality checks | "review", "security", "performance" |
+| harness-plan | Planning and task shaping into Plans.md | "plan", "break this down", "/plan-with-agent" |
+| harness-sync | Check alignment across Plans.md, git state, and implementation | "sync", "is this aligned?", "check drift" |
+| memory | SSOT management, memory search, SSOT promotion | "SSOT", "decisions.md", "memory search", "harness-mem" |
+| cognitive-load (Plan Brief / Progress / Accept) | 3 surface HTML for non-engineer vibecoder review (Phase 65) | "plan brief", "進捗確認", "受け入れ判断", "ship/wait/reject" |
+
+Skills are organized as flat directories under `skills/`, with Codex-specific variants in `skills-codex/`. Full catalog: [docs/CLAUDE-skill-catalog.md](docs/CLAUDE-skill-catalog.md)
+Cognitive-load 3 surface 詳細: [docs/cognitive-load-surfaces.md](docs/cognitive-load-surfaces.md) / Cross-project safety: [docs/cross-project-safety.md](docs/cross-project-safety.md)
+
+## Development Flow
+
+0. **When editing skills/hooks**: run `/reload-skills` after skill-only changes, or `/reload-plugins` after plugin manifest/hook changes, to refresh runtime cache immediately
+1. **Plan**: Use `/plan-with-agent` to add tasks to Plans.md
+2. **Implement**: `/work` (Claude implements) or `/breezing` (team full-run). Both support `--codex`
+3. **Review**: Runs automatically (manual: `/harness-review`)
+4. **Validate**: Run `./tests/validate-plugin.sh` for structural validation
+
+## Testing
+
+```bash
+./tests/validate-plugin.sh          # Validate plugin structure
+./scripts/ci/check-consistency.sh   # Consistency check
+```
+
+Details: [docs/CLAUDE-commands.md](docs/CLAUDE-commands.md)
+
+## Notes
+
+- **Watch for self-reference**: Running `/work` on this plugin means editing its own code
+- **Hooks run automatically**: PreToolUse/PostToolUse guards are active
+- **VERSION sync**: Leave version files untouched in normal PRs; update them only for releases
+- **Worker 契約 (v4.3.0+)**: Worker は `worker-report.v1` で self_review 5 件必須。Plans.md の `cc:*` マーカー書換は NG-1 で自動 deny。詳細: [agents/worker.md](agents/worker.md)
+- **Skill frontmatter 設計**: `disable-model-invocation: true` は dangerous side-effect skill 専用。read-only / 判定 skill に付けると Skill tool 経由起動をブロックする副作用。Anti-Pattern: [.claude/rules/skill-editing.md](.claude/rules/skill-editing.md) + [.claude/memory/patterns.md](.claude/memory/patterns.md) P27 非適用条件 (2026-05-18 codify)
+- **Slash command 出力の要約契約**: `/コマンド` の `<local-command-stdout>` が長文 (10 行以上) で host Claude に渡された場合、host は必ず assistant message として 1-3 行で要約し、次のアクション (待機 / 終了 / ユーザー判断要請) を明示する。skill 側も結論時に instruction line literal (`↑この結果は Claude が要約します。Enter キーで次へ進むか、新規 prompt で別の指示を出してください。`) を出力する。詳細: [.claude/memory/patterns.md](.claude/memory/patterns.md) P35 (2026-05-19 codify)
+
+## MCP Trust Policy
+
+ユーザーレベル MCP は全て信頼済みソース。
+外部 MCP 追加時のルール:
+1. `harness_mem_ingest` 経由のメモリ書き込みには出所タグ (`source: "mcp:<server-name>"`) を付与
+2. 不特定の外部入力はサブエージェントで検疫（隔離コンテキストで検証後にメモリ昇格）
+3. プロジェクトレベル MCP 追加時は deny で `mcp__<新サーバー>__*` を制限し、必要なツールのみ allow
+
+## Permission Boundaries
+
+以下は settings.json の deny/ask とガードレールエンジン (R01-R16) の組み合わせ。
+**層の役割は非対称**であることに注意 — deny 相当の遮断は operator の settings
+(user scope `~/.claude/settings.json` 等) の permissions 層が担い、ガードレール層は
+ルールごとに deny / ask / 警告つき許可のいずれかを返す (2026-08-11 実測で確認)。
+「両層が同じ操作を deny する二重防御」ではない行が多い。
+
+| Rule | permissions 層 | ガードレール層 (実測) | 理由 |
+|------|--------------|--------------------|------|
+| `.claude-plugin/settings*`, `.claude/settings*` | deny | R02/R03: **警告つき許可** | 自己書き換え防止 (遮断は permissions 層のみ) |
+| `.eslintrc*`, `eslint.config.*`, `biome.json`, `tsconfig*.json` | deny | 対象外 | 品質基準の保護 |
+| `.github/workflows/*` | deny | R13: **警告つき許可** | CI パイプラインの保護 (遮断は permissions 層のみ) |
+| `git push --force` | deny | R06: deny | 不可逆操作の防止 (真の二重防御) |
+| `git push origin main/master` | — | R12: ask（設定で deny / allow 可） | protected branch 保護 |
+| `git reset --hard` | deny | R11: deny (**保護ブランチ参照時のみ**。`HEAD~1` 等は素通り) | 不可逆操作の防止 |
+| `git add <secret file>` | — | R15: deny | 秘密ファイルの staging 防止 |
+| `mcp__codex__*` | deny | 対象外 | Codex MCP 直接使用の防止 |
+
+変更が必要な場合はユーザーに手動操作を依頼すること。
+
+**防御層を追加・変更する前に必読**: [.claude/rules/defense-layer-blast-radius.md](.claude/rules/defense-layer-blast-radius.md) — 層ごとの強制力と影響範囲（`permissions` と hook は agent のみ / `sandbox` は OS が全プロセスに強制）、強制力が強い層ほど適用範囲を狭くする原則、追加前の 5 点チェック、`excludedCommands` がサブプロセスへ継承されない事実、user scope 昇格前の 1 プロジェクト検証。2026-08-10 に同型の事故を 2 回起こしたため codify。
+
+- Cursor 実装バックエンド利用時のルール: [skills/cursor-do/references/cursor-cli-only.md](skills/cursor-do/references/cursor-cli-only.md)
+
+外部 API への sandbox allowlist 設定 (Firecrawl / web スクレイプ等): [docs/sandbox-allowlist-recipe.md](docs/sandbox-allowlist-recipe.md) — `~/.claude/settings.json` への patch 手順を SSOT 化。`templates/sandbox-settings.json.template` と数値・項目を同期。
+
+## Key Commands (for development)
+
+| Command | Purpose |
+|---------|---------|
+| `/plan-with-agent` | Add improvement tasks to Plans.md |
+| `/work` | Implement tasks (auto-scope detection, --codex support) |
+| `/breezing` | Full team parallel run with Agent Teams (--codex support) |
+| `/harness-review` | Review changes |
+| `/validate` | Validate plugin |
+| `/remember` | Record learnings |
+
+Details & handoff: [docs/CLAUDE-commands.md](docs/CLAUDE-commands.md)
+
+## SSOT (Single Source of Truth)
+
+- `.claude/memory/decisions.md` - Decisions (Why)
+- `.claude/memory/patterns.md` - Reusable patterns (How)
+
+## Test Tampering Prevention
+
+> **Absolutely prohibited**: Tampering with tests to fake "success"
+
+Details: [.claude/rules/test-quality.md](.claude/rules/test-quality.md) / [.claude/rules/implementation-quality.md](.claude/rules/implementation-quality.md)
+
+- Migration policy: [docs/rules/migration-policy.md](docs/rules/migration-policy.md) - deleted-concepts.yaml の運用ルール (Phase 40 で導入)
+- Active watching test policy: [docs/rules/active-watching-test-policy.md](docs/rules/active-watching-test-policy.md) - 外部 daemon / opt-in ファイル監視機能の 3 状態テスト規約 (Phase 50 で導入、D40 / P29 運用ルール化)
+- Cross-repo handoff: [docs/rules/cross-repo-handoff.md](docs/rules/cross-repo-handoff.md) - claude-code-harness ↔ harness-mem 責任境界 + 2 経路 handoff workflow (Phase 65 で codify、D42 の shareable policy 部分)
+
+## North Star
+
+Harness が目指す 3 層の野望 (土台 → てっぺん)。詳細は [spec.md](spec.md) (Purpose / Execution Backend Contract / Mode 1・Mode 2)。
+
+- **L1 判断専念**: AI が plan / 実装 / 比較 / 検証 evidence を準備し、operator (人間) は最終判断のみ行う。
+- **L2 ツール非依存 (tool-agnostic)**: 同一 Harness (R01-R16 + plan/work/review/release) が Claude / Codex / Cursor の「どれからでも」効く。1 つの policy engine が 3 host を native hook 経由で adjudicate する (複製でなく routing)。harness が駆動する向きと、host「から」使う向きの両方を対等にサポート。
+- **L3 協調 (collaboration, 将来の本丸)**: 複数ツールが同一プロジェクトを、人間をコピペ係にせず協調する。Mode 1 = 完全自律オーケストレーション (v1 は Lead=Claude 固定)、Mode 2 = 人間在席の peer co-drive (live notice messaging)。フル peer-Lead 協調は段階導入。
+
+## Codex / Cursor hook 誤解防止
+
+Codex / Cursor の hook について繰り返し起きた誤解を固定する。詳細は [spec.md](spec.md) (Host Adapter / Host Distribution Contract / hosts.toml)。
+
+- **FACT-1 (generated, not inline)**: Codex / Cursor は一級の hook ホスト。hook は config.toml に inline で書かれず、`harness gen` が生成する `.codex/hooks.json` / `.cursor/hooks.json` (gitignore された build artifact) に入る。すべて `bin/harness hook pre-tool --host <h>` を呼ぶ。
+- **FACT-2 (no inline != no hooks)**: 「config.toml に inline hooks が無い」は「config の中に書かない」の意味であって「hook が無い」ではない。この 2 つを混同しない。
+- **FACT-3 (enforcement wired / delivery wired)**: hook は 2 層。(a) enforcement (PreToolUse → R01-R16 policy engine) は 3 host 対称に配線済みで `harness gen` が生成する。(b) Mode 2 delivery (inbox-check / monitor 受信) も生成配線済み — `GenerateDeliveryHooksJSON` は Phase 105.9 [b82143fe] で `harness gen` に接続され、生成される Codex/Cursor hooks.json に inbox-check (turn 境界 delivery) が入る。identity は Phase 121.2 で runtime env 解決 (`inbox check --from-env`、`{{TEAM}}`/`{{AGENT}}` placeholder は撤去)。Claude host の Stop 配線は Phase 121.3 で tracked `hooks/hooks.json` + `.claude-plugin/hooks.json` に追加 (env 展開 + stdin session_id fallback)。live monitor は opt-in で既定 OFF。
+- **FACT-4 (materialize して確認)**: あるホストが capability を欠くと結論する前に、必ず `harness gen` 出力を実際に materialize して中身を確認する。config コメントだけで「無い」と断定しない。not_observed != absent。
+
+<!-- harness-integrity: last-audit=2026-05-18 -->
+
+## Skill Retention Notes
+
+- `agent-browser` は Phase 91.7 で「曖昧」と一時判定されたが、Phase 104.9 の参照監査で `skills/harness-work`、`scripts/browser-review-runner.sh`、`scripts/pretooluse-browser-guide.sh`、`scripts/ci/check-consistency.sh` から実配線されていることを確認し保持と裁定（2026-07-05）。
+- `cc-update-review` は初回監査で削除したが、`tests/test-claude-upstream-integration.sh` が Upstream Tracking Contract の一部として存在と A/B/C/P 分類を pin していることが統合ゲートで判明し、保持へ訂正（2026-07-05）。教訓: 参照監査は tests/ と docs/ を含めた全域で行う。
+- `gogcli-ops` / `cc-cursor-cc` は全域監査でも機能参照ゼロのため削除確定。retired-alias registry（`templates/registry/retired-aliases.v1.yaml`）に登録済み。

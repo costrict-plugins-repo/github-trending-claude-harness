@@ -1,0 +1,129 @@
+# retired-aliases.v1.yaml — Retired alias registry (Phase 97)
+#
+# SSOT for exclusion-based migration residue scanning.
+# Schema: templates/schemas/retired-alias.v1.json
+# Scanner: bin/harness retired-alias scan
+
+version: 1
+
+entries:
+  - id: core-guardrails-path
+    kind: path
+    pattern: "core/src/guardrails"
+    removed_in: "v4.0.0"
+    reason: "TypeScript guardrail engine を Go-native に移植 (Hokage migration)。TS エンジンごと core/ を廃止"
+    allowlist:
+      - "go/"
+      - "Plans.md"
+      - "docs/social/"
+      - "skills/claude-codex-upstream-update/"
+      - "docs/rules/migration-policy.md"
+
+  - id: guardrails-rules-ts
+    kind: path
+    pattern: "core/src/guardrails/rules.ts"
+    removed_in: "v4.0.0"
+    reason: "TypeScript guardrail rules file; replaced by go/internal/guardrail/rules.go"
+    allowlist:
+      - "go/"
+      - "docs/rules/migration-policy.md"
+
+  - id: ts-guardrail-engine-concept
+    kind: concept
+    pattern: "TypeScript guardrail engine"
+    removed_in: "v4.0.0"
+    reason: "Hokage migration で TS→Go 移植完了。TS エンジンへの言及は旧版の記述"
+    allowlist:
+      - "docs/CLAUDE_CODE_COMPATIBILITY.md"
+      - "docs/github-harness-plugin-benchmark.md"
+      - "docs/MIGRATION-v4.md"
+      - "docs/social/"
+      - "docs/claims-audit.md"
+      - "docs/distribution-scope.md"
+      - "docs/private/"
+      - "docs/positioning-notes.md"
+      - "docs/release-copy-phase21.md"
+      - "Plans.md"
+      - "docs/rules/migration-policy.md"
+
+  - id: skill-gogcli-ops
+    kind: path
+    pattern: "skills/gogcli-ops"
+    removed_in: "Phase 104.9"
+    reason: "Phase 91.7 で曖昧と自己認定、参照監査 (2026-07-05) で機能参照ゼロを確認し削除。test fixture は agent-browser に差し替え"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "CLAUDE.md"
+      - "templates/registry/"
+
+  - id: skill-cc-cursor-cc
+    kind: path
+    pattern: "skills/cc-cursor-cc"
+    removed_in: "Phase 104.9"
+    reason: "Phase 91.7 で曖昧と自己認定、参照監査 (2026-07-05) で参照ゼロを確認し削除"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "CLAUDE.md"
+      - "templates/registry/"
+
+  - id: skill-harness-orchestration
+    kind: path
+    pattern: "skills/harness-orchestration"
+    removed_in: "Phase 107"
+    reason: "Jobs 視点レビュー (2026-07-07) で vanity scorecard (backend 利用量の自慢) と判定、判断に寄与しないため削除"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "templates/registry/"
+      - "docs/reports/"
+
+  - id: skill-cursor-rescue
+    kind: path
+    pattern: "skills/cursor-rescue"
+    removed_in: "Phase 107"
+    reason: "Jobs 視点レビューで 1 backend の例外復旧を top command にするのは過剰と判定、cursor-setup / docs へ集約し削除"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "templates/registry/"
+      - "docs/reports/"
+
+  - id: rule-command-editing
+    kind: path
+    pattern: ".claude/rules/command-editing.md"
+    removed_in: "Phase 124.1"
+    reason: "v2.17.0 で commands→skills 移行済み、DEPRECATED バナー付きのまま残っていた legacy command 規約ファイルを削除 (常時ロード context 棚卸し、Phase 124.1)。規約は skill-editing.md に統合済み"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "templates/registry/"
+      - "docs/rules/skill-editing-templates.md"
+
+  - id: rule-opus-4-7-prompt-audit
+    kind: path
+    pattern: "opus-4-7-prompt-audit"
+    removed_in: "Phase 124.3"
+    reason: "Opus 4.7 世代の agent prompt 監査基準を Claude 5 世代向け claude-5-prompt-standard.md に置換 (operator 承認 2026-07-26)。Anthropic の Claude 5 ガイダンス (例文の大量提示は探索空間を狭める / ルールで縛るより判断に任せる) と衝突する条項 (曖昧語 blanket 禁止、行動指示への逐語要素一律必須化、before/after 例の大量記録義務) を撤廃し、契約系条項 (schema 名・列挙値・回数上限・wrapper command・権限境界・effort tier 指定) のみ維持して後継ファイルに引き継いだ"
+    allowlist:
+      - "CHANGELOG.md"
+      - ".claude/memory/archive/"
+      - "Plans.md"
+      - "templates/registry/"
+      - "docs/CLAUDE-feature-table.md"
+      - "docs/opus-4-7-impact.md"
+      - "docs/upstream-update-snapshot-2026-05-15.md"
+      - "docs/task-budgets-research.md"
+      - "docs/smoke-test-v4.2.0.md"
+      - ".claude/memory/session-log.md"
+      - "skills/harness-work/SKILL.md"
+      - "skills/harness-work/references/"
+      - "opencode/skills/harness-work/SKILL.md"
+      - ".claude/rules/claude-5-prompt-standard.md"
+      - "codex/AGENTS.md"

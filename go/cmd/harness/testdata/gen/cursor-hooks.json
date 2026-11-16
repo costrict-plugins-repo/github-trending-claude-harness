@@ -1,0 +1,21 @@
+{
+  "hooks": {
+    "preToolUse": [
+      {
+        "command": "bin/harness hook pre-tool --host cursor",
+        "matcher": "*",
+        "timeout": 30,
+        "type": "command"
+      }
+    ],
+    "stop": [
+      {
+        "command": "bin/harness inbox check --from-env",
+        "matcher": "*",
+        "timeout": 30,
+        "type": "command"
+      }
+    ]
+  },
+  "version": 1
+}

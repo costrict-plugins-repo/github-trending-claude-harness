@@ -1,0 +1,36 @@
+# docs/images: strict allowlist — only track assets actually referenced
+# from README or distributed documentation. Everything else (dev
+# screenshots, draft variants, etc.) stays local only.
+
+# Default: ignore everything under docs/images
+/*
+
+# Allow the directory metadata itself
+!/.gitignore
+
+# Allow top-of-README brand logo (README.md:2, README_ja.md:2)
+!/claude-harness-logo-with-text.png
+
+# Allow README hero visuals.
+# loop-*.svg are the current animated operating-loop heroes (README.md,
+# README_ja.md). hero-operating-loop-*.png are the previous static heroes,
+# kept tracked but no longer referenced from either README.
+!/readme/
+/readme/*
+!/readme/loop-en.svg
+!/readme/loop-ja.svg
+!/readme/hero-operating-loop-en.png
+!/readme/hero-operating-loop-ja.png
+
+# Allow hokage hero (README.md:24, README_ja.md:24) — but no other hokage assets
+!/hokage/
+/hokage/*
+!/hokage/hokage-hero.jpg
+
+# Bilingual SVG motion source, reduced-motion posters and README GIFs.
+!/readme/hero-motion-en.svg
+!/readme/hero-motion-en.gif
+!/readme/hero-motion-en-poster.svg
+!/readme/hero-motion-ja.svg
+!/readme/hero-motion-ja.gif
+!/readme/hero-motion-ja-poster.svg
